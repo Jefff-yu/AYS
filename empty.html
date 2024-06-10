@@ -1,0 +1,86 @@
+<!-- 游06/11：嘗試用chatgpt分析圖片中點的位置並轉換成座標放在空間裡，修改後是以下效果： -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>3D Points Visualization</title>
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  </head>
+  <body>
+    <a-scene>
+      <!-- Adding a sky and a plane for better visualization -->
+      <a-sky color="#ECECEC"></a-sky>
+      <a-plane rotation="-90 0 0" width="20" height="20" color="#7BC8A4"></a-plane>
+
+      <!-- 3D Points -->
+      <script>
+        const points = [
+          [23.65, 0.0, 9.9,  "1"],
+          [23.65, 0.0, 9.9, "2"],
+          [18.55, 0.0, 17.45, "3"],
+          [8.75, 0.0, -0.45, "4"],
+          [21.15, 0.0, -15.0, "5"],
+          [10.95, 0.0, -13.05, "6"],
+          [33.05, 0.0, 8.2, "7"],
+          [35.25, 0.0, 11.75, "8"],
+          [28.15, 0.0, 16.8, "9"],
+          [2.1, 0.0, 6.75, "10"],
+          [-2.4, 0.0, 10.9, "11"],
+          [-8.9, 0.0, 16.8, "12"],
+          [-12.0, 0.0, 10.9, "13"],
+          [-24.95, 0.0, 12.75, "14"],
+          [0.0, 0.0, 0.0, "15"],
+          [-11.9, 0.0, 0.05, "16"],
+          [-26.1, 0.0, 0.05, "17"],
+          [-29.1, 0.0, 12.3, "18"],
+          [-23.35, 0.0, 16.35, "19"],
+          [-17.95, 0.0, -8.25, "20"],
+          [-23.55, 0.0, -15.0, "21"],
+          [-11.4, 0.0, -13.7, "22"],
+          [-33.35, 0.0, -8.25, "23"],
+          [-30.0, 0.0, -13.7, "24"],
+          [-39.9, 0.0, -9.15, "25"],
+          [1.45, 0.0, 17.1, "26"],
+          [9.35, 0.0, 6.75, "27"],
+          [12.45, 0.0, -18.0, "28"],
+          [23.65, 0.0, -18.75, "29"],
+          [10.05, 0.0, -4.1, "30"],
+          [-0.3, 0.0, -19.8, "31"],
+          [-5.0, 0.0, -20.2, "32"]
+        ];
+
+        points.forEach(point => {
+          const [x, y, z, label] = point;
+          const sphere = document.createElement('a-box');
+          sphere.setAttribute('position', `${x} ${y} ${z}`);
+          sphere.setAttribute('radius', '1');
+          sphere.setAttribute('color', 'red');
+          document.querySelector('a-scene').appendChild(sphere);
+
+          const text = document.createElement('a-text');
+          text.setAttribute('value', label);
+          text.setAttribute('position', `${x} ${y + 1.2} ${z}`);
+          text.setAttribute('align', 'center');
+          text.setAttribute('color', 'black');
+          text.setAttribute('scale', '2 2 2'); // Increase the size of the text
+          document.querySelector('a-scene').appendChild(text);
+        });
+      </script>
+
+      <!-- Camera. -->
+      <a-entity id="cameraWrapper" position="0 1.6 8">
+        <a-entity id="camera" camera look-controls wasd-controls>
+          <!-- Cursor. -->
+          <a-entity id="cursor" position="0 0 -2"
+                    geometry="primitive: ring; radiusOuter: 0.016; radiusInner: 0.01"
+                    material="color: #ff9; shader: flat; transparent: true; opacity: 0.5"
+                    scale="2 2 2" raycaster>
+          </a-entity>
+        </a-entity>
+      </a-entity>
+
+      <a-entity id="leftHand" laser-controls="hand: left"></a-entity>
+      <a-entity id="rightHand" laser-controls="hand: right"></a-entity>
+    </a-scene>
+  </body>
+</html>
