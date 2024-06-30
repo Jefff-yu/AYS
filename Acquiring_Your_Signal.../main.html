@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>Acquiring your signal...</title>
+    <meta name="description" content="Acquiring your signal...">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://unpkg.com/aframe-template-component@3.x.x/dist/aframe-template-component.min.js"></script>
+    <script src="https://unpkg.com/aframe-layout-component@4.x.x/dist/aframe-layout-component.min.js"></script>
+    <script src="https://unpkg.com/aframe-event-set-component@5.x.x/dist/aframe-event-set-component.min.js"></script>
+    <script src="https://unpkg.com/aframe-proxy-event-component@2.1.0/dist/aframe-proxy-event-component.min.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            min-height: 100vh;
+            flex-direction: column;
+        }
+        .menu-icon, .prev-icon, .next-icon {
+            position: fixed;
+            font-size: 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            z-index: 1001;
+        }
+        .menu-icon {
+            top: 5px;
+            left: 0px;
+            color: white;
+            border: 1px solid white;
+            border-radius: 3px;
+            padding: 1px;
+        }
+        .prev-icon, .next-icon {
+            bottom: 20px;
+            font-size: 20px;
+            border: 2px solid white;
+            border-radius: 5px;
+            padding: 10px;
+            background: rgba(128, 128, 128, 0.6); /* 半透明的灰色 */
+            color: #fff;
+        }
+        .prev-icon {
+            left: 10px;
+        }
+        .next-icon {
+            left: 10px;
+            bottom: 80px; /* 60px height + 10px margin + 10px margin */
+        }
+        nav {
+            position: fixed;
+            top: 0;
+            left: -300px;
+            width: 250px;
+            height: 100%;
+            background-color: #444;
+            transition: right 0.3s ease-in-out;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        nav.open {
+            left: 0;
+        }
+        nav ul {
+            list-style-type: none;
+            padding: 20px;
+            margin: 0;
+        }
+        nav ul li {
+            margin: 10px 0;
+        }
+        nav ul li a {
+            color: #fff;
+            text-decoration: none;
+            display: block;
+            padding: 10px;
+            cursor: pointer;
+        }
+        .dropdown-content {
+            display: none;
+            padding-left: 20px;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        .dropdown-content a {
+            padding: 5px 10px;
+        }
+        #title {
+            position: fixed;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: 24px;
+            color: white;
+            opacity: 0;
+            transition: opacity 1s;
+            z-index: 1002;
+        }
+        #aframe-container {
+            flex: 1;
+        }
+        #floating-tip {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 1003;
+            display: none;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        #floating-tip button {
+            margin-top: 10px;
+            padding: 5px 10px;
+            background: #fff;
+            color: #333;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #floating-tip p {
+            margin: 0;
+            padding: 0;
+            text-align: left;
+        }
+        #floating-tip strong {
+            font-size: 24px; /* 增加字体大小 */
+        }
+        #info-card {
+            position: fixed;
+            top: 50px;
+            right: 10px;
+            width: 300px;
+            max-height: 650px;
+            overflow-y: scroll;
+            background: rgba(0, 0, 0, 0.467);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            z-index: 1002;
+
+        }
+        #toggle-info-card {
+        position: absolute;
+        top: 50%;
+        left: -20px; /* 按钮向右偏移一些距离 */
+        transform: translateY(-50%);
+        background: none;
+        width: 30px;
+        height: 30px;
+        border: 10px solid rgba(249, 249, 249, 0.674); /* 三角形的颜色和info-card背景色一致 */
+
+        cursor: pointer;
+    }      
+    </style>
+</head>
+<body>
+    <button class="menu-icon" onclick="toggleMenu()">☰</button>
+    <button class="prev-icon" onclick="showPrevious()">← 上一個點位</button>
+    <button class="next-icon" onclick="showNext()">下一個點位 →</button>
+    <nav id="menu">
+        <ul id="menu-list">
+            <li class="dropdown">
+                <a onclick="toggleDropdown('dropdown-content-1')">一樓展場 ▼</a>
+                <div class="dropdown-content" id="dropdown-content-1">
+                </div>
+            </li>
+            <li class="dropdown">
+                <a onclick="toggleDropdown('dropdown-content-2')">二樓展場 ▼</a>
+                <div class="dropdown-content" id="dropdown-content-2">
+                </div>
+            </li>
+        </ul>
+    </nav>
+
+    <div id="title"></div>
+    <div id="floating-tip">
+        <p style="text-align: center;">
+            <strong>國立清華大學藝術學院學士班第三屆畢業展</strong><br>
+            <img id="banner" src="banner.jpg" alt="" style="max-width: 100%; border-radius: 10px; margin-top: 10px;">
+            <p>
+                我們是誰？我們在哪？我們為何而生？人們終日尋找著屬於自己的位置，從教室座位、車廂空位、在地圖上的座標，到在社會中的身份，又或者是人類之於強大科技的定位皆是如此，彷彿不這樣思考，就無法確認自己是否存在。我們厭惡漂浮的感受，厭惡腳觸不著地的不確定性，所以不停找啊找，試圖找到那能讓自己落腳的「位置」。針對正在尋找的「位置」，我們分出了三個主要子題。
+            </p>
+            <p>-</p>
+            <p>
+                （一）個體與外界的關係<br>人類長久以來不停探索著自身與環境，抑或是人與人之間的聯繫，包含身體與周遭環境的相互作用，以及其影響我們感知和定位感的方式。此外個體的定位不僅受到空間和物理環境的影響，還受到文化認同和社會身分的脈絡所塑造。透過這些探索，思考如何在這個多元且變動不居的世界中找到自我。
+            </p>
+            <p>
+                （二）科技的力量和限制<br>科技的發展為我們提供了更多可能性和便利，但同時也帶來新的挑戰和限制。透過展覽中的作品，探索科技對個體的影響，例如資訊過載、隱私權的侵犯，以及個人資料的操控等，並試圖思考如何在科技進步的同時保持我們的獨立性和自主性，確立自己在科技浪潮下的定位。
+            </p>
+            <p>
+                （三）虛實交融的定位<br>時空界線隨著科技的進程逐漸模糊，使我們的定位更加複雜。我們不僅要在現實世界中找到位置，還期望在虛擬世界中留下屬於自己的足跡。社交媒體、網絡身份和虛擬角色等，成為我們闡述個人立場、重拾過往回憶和建立社交連結的平台。我們又如何在往昔的榮辱、當下的無常與未來的臆想中，探尋何為真實。「正在尋找你的位置…」一展中，透過十七件作品，創作者們試圖使用各自認同的方式，以不同的姿態、角度關注著個體在空間和社會中的定位，也探討科技對於個體的影響及其在科技時代中的自主性。在不斷變化浮動的世界中，試圖站穩腳跟，帶領觀眾也幫助自身一步步靠近並同時塑形屬於自己的「位置」。
+            </p>
+            <p>-</p>
+            <p>
+                展期：2024年5月26日-6月2日（10：00-18：00，6/2 提早14：00閉展）
+            </p>
+            <p>
+                地點 : 臺灣當代文化實驗場C-LAB，通信分隊展演空間Art Space III
+            </p>
+            <p>
+                開幕｜2024年5月26日（日） 14：00-18：00
+            </p>
+            <p>
+                主辦單位｜國立清華大學藝術學院學士班科技藝術組
+            </p>
+            <p>
+                協辦單位｜臺灣當代文化實驗場C-LAB
+            </p>
+            <p>
+                主要贊助｜春之清華基金會
+            </p>
+        <p style="text-align: center;">
+            操作說明:<br>1. 按鍵盤的 " m " 可以控制菜單的顯示與隱藏<br>2. 按方向鍵的左或右鍵可以播放上一張或下一張圖片<br>3. 按鍵盤的 “i” 可顯示或隱藏作品資訊
+        </p>
+        <button onclick="closeTip()">開始點位導覽</button>
+    </div>
+    
+    
+    <div id="info-card">
+        <button id="toggle-info-card" onclick="toggleInfoCard()"></button>
+        <h2 id="info-title"></h2>
+        <h3 id="info-author"></h3>
+        <p id="info-description"></p>
+        <img id="info-image" src="" alt="" style="max-width: 100%; border-radius: 10px; margin-top: 10px;">
+        <img id="info-image2" src="" alt="" style="max-width: 100%; border-radius: 10px; margin-top: 10px;">
+    </div>
+
+    <div id="aframe-container">
+        <a-scene>
+            <a-assets id="assets">
+                <!-- 預加載第1張圖片 -->
+                <img id="img1" crossorigin="anonymous" src="360images/1.jpg">
+            </a-assets>
+
+            <a-entity id="links" layout="type: box; columns: 4; marginColumn: 2; marginRow: 2;" position="5 -1 -4" rotation="0 90 90"></a-entity>
+
+            <a-entity id="cam-rig" position="0 0 0" rotation="0 0 0">
+                <a-sky id="image-360" radius="100" src="#img1"
+                    animation__fade="property: components.material.material.color; type: color; from: #FFF; to: #000; dur: 500; startEvents: fade"
+                    animation__fadeback="property: components.material.material.color; type: color; from: #000; to: #FFF; dur: 500; startEvents: animationcomplete__fade"></a-sky>
+                <a-camera wasd-controls="enabled: false">
+                    
+                </a-camera>
+            </a-entity>
+        </a-scene>
+    </div>
+    
+    <script>
+        const imageNames = [
+            "正在尋找你的位置...", "FLOW-ER SERIES", "FLOW-ER SERIES", "FLOW-ER SERIES", "精神抖擻！", 
+            "好運貓貓", "好運貓貓", "好運貓貓", "好運貓貓", "柳緣", "柳緣", "柳緣", "Ear 異耳™", 
+            "Ear 異耳™", "凝視~觸覺！", "凝視~觸覺！", "凝視~觸覺！", "Run? Run...Run!", "Run? Run...Run!", 
+            "Run? Run...Run!", "拾起之必要", "拾起之必要", "拾起之必要", "拾起之必要", "好想死 Desire. Death. Dream", 
+            "好想死 Desire. Death. Dream", "好想死 Desire. Death. Dream", "來自新世界", "來自新世界", "家庭樣本", 
+            "家庭樣本", "家庭樣本", "家庭樣本", "家庭樣本", "Im watching u <3", "Im watching u <3", 
+            "森林小動物與藝術家喬治之死", "森林小動物與藝術家喬治之死", "The Modern Cave", "The Modern Cave", 
+            "Breaking out", "Breaking out", "死亡是你唯一的永生", "死亡是你唯一的永生", "Backspace", "Backspace", 
+            "Backspace", "Backspace"
+        ];
+
+        const imageAuthors = [
+            '展覽資訊',
+            '武威桀',
+            '武威桀',
+            '武威桀',
+            '鄭云宣',
+            '許心恬\n程馨',
+            '許心恬\n程馨',
+            '許心恬\n程馨',
+            '許心恬\n程馨',
+            '沈旻潔\n張嘉佑\n林宛靚',
+            '沈旻潔\n張嘉佑\n林宛靚',
+            '沈旻潔\n張嘉佑\n林宛靚',
+            '呂柏穎',
+            '呂柏穎',
+            '張洛豪\n寧昱誠',
+            '張洛豪\n寧昱誠',
+            '張洛豪\n寧昱誠',
+            '商睿庭\n施柏年\n吳雨曈',
+            '商睿庭\n施柏年\n吳雨曈',
+            '商睿庭\n施柏年\n吳雨曈',
+            '林易萱',
+            '林易萱',
+            '林易萱',
+            '林易萱',
+            '卓宛萱\n蔡沛辰',
+            '卓宛萱\n蔡沛辰',
+            '卓宛萱\n蔡沛辰',
+            '張鈞祺\n侯凱馨',
+            '張鈞祺\n侯凱馨',
+            '游覺輔\n賴玟霓',
+            '游覺輔\n賴玟霓',
+            '游覺輔\n賴玟霓',
+            '游覺輔\n賴玟霓',
+            '游覺輔\n賴玟霓',
+            '周振綺\n趙可晨',
+            '周振綺\n趙可晨',
+            '張辰宇\n張旭恆',
+            '張辰宇\n張旭恆',
+            '陳虹宇\n王語彤',
+            '陳虹宇\n王語彤',
+            '童翎涵\n劉芳華',
+            '童翎涵\n劉芳華',
+            '盧沛璇',
+            '盧沛璇',
+            '曾偌荃\n邱湘芝',
+            '曾偌荃\n邱湘芝',
+            '曾偌荃\n邱湘芝',
+            '曾偌荃\n邱湘芝'
+        ];
+
+        const imageDescriptions = [
+            "我們是誰？我們在哪？我們為何而生？人們終日尋找著屬於自己的位置，從教室座位、車廂空位、在地圖上的座標，到在社會中的身份，又或者是人類之於強大科技的定位皆是如此，彷彿不這樣思考，就無法確認自己是否存在。我們厭惡漂浮的感受，厭惡腳觸不著地的不確定性，所以不停找啊找，試圖找到那能讓自己落腳的「位置」。",
+            "FLOW-ER:FLOW-ER 3號是一件結合了鏡面開合花、NFC讀卡機以及賽博人臉的機械裝置。這件作品為藝術家在展場中的替身。\nWaltz:\n這部作品的意圖是將個人轉變成為FLOW-ER的過程及媒介具象化，並引用日本特攝片的變身器具作為元素。\nTwolips:\n，這件作品的名稱深得其源自鬱金香的英文tulips。這件作品將Twolips放置於實驗艙中，透過這個場景傳達對個體獨特性的保護。",
+            "FLOW-ER:FLOW-ER 3號是一件結合了鏡面開合花、NFC讀卡機以及賽博人臉的機械裝置。這件作品為藝術家在展場中的替身。\nWaltz:\n這部作品的意圖是將個人轉變成為FLOW-ER的過程及媒介具象化，並引用日本特攝片的變身器具作為元素。\nTwolips:\n，這件作品的名稱深得其源自鬱金香的英文tulips。這件作品將Twolips放置於實驗艙中，透過這個場景傳達對個體獨特性的保護。",
+            "FLOW-ER:FLOW-ER 3號是一件結合了鏡面開合花、NFC讀卡機以及賽博人臉的機械裝置。這件作品為藝術家在展場中的替身。\nWaltz:\n這部作品的意圖是將個人轉變成為FLOW-ER的過程及媒介具象化，並引用日本特攝片的變身器具作為元素。\nTwolips:\n，這件作品的名稱深得其源自鬱金香的英文tulips。這件作品將Twolips放置於實驗艙中，透過這個場景傳達對個體獨特性的保護。",
+            "此計畫利用派對式地下電音使人肆意跳舞，使人獲得潛在鼓動，是對自由最好的表達方式之一，同時挑戰已深刻內化的社會規範的方式。是在無味日常中的精神補給。旨在讓日漸麻木無感的人們對不正義的反抗，感染精神抖擻的態度，無論正面或負面，只要能精神抖擻就達到激發展示慾望的目的，進而反思酷兒議題的社會現象。除此之外，「精神抖擻」亦是在基本生活起居以外對生存有重大的意義，在活著當下我們擁有暗處流動的精力，才有了創造力，希望觀眾在參與能帶走這份騷動，激勵他們更活力地生活。避免生活帶來多重的無力感，內在慢慢死去的求生練習。",
+            "《好運貓貓》是由六件裝置組成的作品。 本作品靈感來自於去年台灣網路上非常流行的一張名為“好運貓貓”的梗圖。 發文人聲只要在 20 秒內轉發該圖片，便將得到好運。  \n快過來，聽說好運貓貓能帶給你好運？\n作為MZ世代的年輕人，我們經歷著許多當代獨有的流行現象， 像「好運貓貓」這類迷因的廣泛流傳也是如此。 然而，當生活充斥潮流，我們的自我又在哪裡？  《好運貓貓》的六件裝置個別象徵著一個現代的流行或是從眾現象， 所有希望「獲得好運」的人與之互動交流，並在過程中感受自己的每個行為。",
+            "《好運貓貓》是由六件裝置組成的作品。 本作品靈感來自於去年台灣網路上非常流行的一張名為“好運貓貓”的梗圖。 發文人聲只要在 20 秒內轉發該圖片，便將得到好運。  \n快過來，聽說好運貓貓能帶給你好運？\n作為MZ世代的年輕人，我們經歷著許多當代獨有的流行現象， 像「好運貓貓」這類迷因的廣泛流傳也是如此。 然而，當生活充斥潮流，我們的自我又在哪裡？  《好運貓貓》的六件裝置個別象徵著一個現代的流行或是從眾現象， 所有希望「獲得好運」的人與之互動交流，並在過程中感受自己的每個行為。",
+            "《好運貓貓》是由六件裝置組成的作品。 本作品靈感來自於去年台灣網路上非常流行的一張名為“好運貓貓”的梗圖。 發文人聲只要在 20 秒內轉發該圖片，便將得到好運。  \n快過來，聽說好運貓貓能帶給你好運？\n作為MZ世代的年輕人，我們經歷著許多當代獨有的流行現象， 像「好運貓貓」這類迷因的廣泛流傳也是如此。 然而，當生活充斥潮流，我們的自我又在哪裡？  《好運貓貓》的六件裝置個別象徵著一個現代的流行或是從眾現象， 所有希望「獲得好運」的人與之互動交流，並在過程中感受自己的每個行為。",
+            "《好運貓貓》是由六件裝置組成的作品。 本作品靈感來自於去年台灣網路上非常流行的一張名為“好運貓貓”的梗圖。 發文人聲只要在 20 秒內轉發該圖片，便將得到好運。  \n快過來，聽說好運貓貓能帶給你好運？\n作為MZ世代的年輕人，我們經歷著許多當代獨有的流行現象， 像「好運貓貓」這類迷因的廣泛流傳也是如此。 然而，當生活充斥潮流，我們的自我又在哪裡？  《好運貓貓》的六件裝置個別象徵著一個現代的流行或是從眾現象， 所有希望「獲得好運」的人與之互動交流，並在過程中感受自己的每個行為。",
+            "柳樹在中國傳統中有相當特殊的意義，離別時折柳，象徵著對故人的一種祝福，古人取柳字「留」之諧音，將對遠行者的不捨與思念，飽含在折柳枝中。\n在反覆經歷相遇與離別的人生裡，那些曾經最重要的人事物，就讓我們在互相轉身離開之前，再憶起那些初識與離別，同時讓觀眾參與「折柳」的意象。留下生命中還留得住的，送別已經留不住的。屬於彼此的故事只要還能在世界的某個角落留下，那它便不會這樣平白消失。",
+            "柳樹在中國傳統中有相當特殊的意義，離別時折柳，象徵著對故人的一種祝福，古人取柳字「留」之諧音，將對遠行者的不捨與思念，飽含在折柳枝中。\n在反覆經歷相遇與離別的人生裡，那些曾經最重要的人事物，就讓我們在互相轉身離開之前，再憶起那些初識與離別，同時讓觀眾參與「折柳」的意象。留下生命中還留得住的，送別已經留不住的。屬於彼此的故事只要還能在世界的某個角落留下，那它便不會這樣平白消失。",
+            "柳樹在中國傳統中有相當特殊的意義，離別時折柳，象徵著對故人的一種祝福，古人取柳字「留」之諧音，將對遠行者的不捨與思念，飽含在折柳枝中。\n在反覆經歷相遇與離別的人生裡，那些曾經最重要的人事物，就讓我們在互相轉身離開之前，再憶起那些初識與離別，同時讓觀眾參與「折柳」的意象。留下生命中還留得住的，送別已經留不住的。屬於彼此的故事只要還能在世界的某個角落留下，那它便不會這樣平白消失。",
+            "在不久的未來，AI及演算法快速進步下，獲取資訊將會比以往還容易，但也因此人類開始無法正確地處理海量的訊息：混肴資訊重要性及安全性、資訊焦慮、過度仰賴演算法等問題都將成為多數人的日常。異耳™ 是因應上述情況，發展出的一種新型資訊接收裝置，結合人工智慧與生物科技，為大家解決技術發展過快所帶來的資訊爆炸問題。\n但當我們寄望先進科技為我們解決問題的同時，心態卻在原地踏步，這樣科技還會是最好的解決方式嗎？",
+            "在不久的未來，AI及演算法快速進步下，獲取資訊將會比以往還容易，但也因此人類開始無法正確地處理海量的訊息：混肴資訊重要性及安全性、資訊焦慮、過度仰賴演算法等問題都將成為多數人的日常。異耳™ 是因應上述情況，發展出的一種新型資訊接收裝置，結合人工智慧與生物科技，為大家解決技術發展過快所帶來的資訊爆炸問題。\n但當我們寄望先進科技為我們解決問題的同時，心態卻在原地踏步，這樣科技還會是最好的解決方式嗎？",
+            "聚焦遭受性騷擾後的感官殘留，將人們面對不適身體觸碰時的感官體驗具象化，希望提供一扇窗，讓第三者得以不同視角感受事件，進而產生共情。 同時也期望受害者感受到自身產生的反應並非過激，而是真實且正常的生理現象，並有許多人同樣為此所困。黏膩、僵直、羞愧...透過受訪者們的口述經驗，每項物件皆由多起真實事件轉譯而成，並透過互動表現感官殘留的存在、觸發與消彌等不同面向。謹向每位與我們分享經歷的人表達誠摯的感謝。",
+            "聚焦遭受性騷擾後的感官殘留，將人們面對不適身體觸碰時的感官體驗具象化，希望提供一扇窗，讓第三者得以不同視角感受事件，進而產生共情。 同時也期望受害者感受到自身產生的反應並非過激，而是真實且正常的生理現象，並有許多人同樣為此所困。黏膩、僵直、羞愧...透過受訪者們的口述經驗，每項物件皆由多起真實事件轉譯而成，並透過互動表現感官殘留的存在、觸發與消彌等不同面向。謹向每位與我們分享經歷的人表達誠摯的感謝。",
+            "聚焦遭受性騷擾後的感官殘留，將人們面對不適身體觸碰時的感官體驗具象化，希望提供一扇窗，讓第三者得以不同視角感受事件，進而產生共情。 同時也期望受害者感受到自身產生的反應並非過激，而是真實且正常的生理現象，並有許多人同樣為此所困。黏膩、僵直、羞愧...透過受訪者們的口述經驗，每項物件皆由多起真實事件轉譯而成，並透過互動表現感官殘留的存在、觸發與消彌等不同面向。謹向每位與我們分享經歷的人表達誠摯的感謝。",
+            "慾望的來源可以是多樣的，它能是夢幻的表象、崇高的敬畏以及群眾的湧動。面對慾望之時，我們總在迷茫和追逐之間徘徊，同時經歷失去抑或暫時滿足。\n慾望的趨力可以是兩面的，明確的慾望也許無意間就成了牽引生活的動力，策動我們狂奔向前；缺席的慾望反而使我們失去方向，彷彿在荒漠般的空虛中，不甘停滯於此地躁動奔跑。此刻，深陷瘋狂與徬徨之間的我們，該如何自處。",
+            "慾望的來源可以是多樣的，它能是夢幻的表象、崇高的敬畏以及群眾的湧動。面對慾望之時，我們總在迷茫和追逐之間徘徊，同時經歷失去抑或暫時滿足。\n慾望的趨力可以是兩面的，明確的慾望也許無意間就成了牽引生活的動力，策動我們狂奔向前；缺席的慾望反而使我們失去方向，彷彿在荒漠般的空虛中，不甘停滯於此地躁動奔跑。此刻，深陷瘋狂與徬徨之間的我們，該如何自處。",
+            "慾望的來源可以是多樣的，它能是夢幻的表象、崇高的敬畏以及群眾的湧動。面對慾望之時，我們總在迷茫和追逐之間徘徊，同時經歷失去抑或暫時滿足。\n慾望的趨力可以是兩面的，明確的慾望也許無意間就成了牽引生活的動力，策動我們狂奔向前；缺席的慾望反而使我們失去方向，彷彿在荒漠般的空虛中，不甘停滯於此地躁動奔跑。此刻，深陷瘋狂與徬徨之間的我們，該如何自處。",
+            "「我心有所愛，不忍讓世界傾敗」——羅智成〈一九七九〉\n希望能留住這波好不容易蓄積起的能量不讓他這麼快消散，集結眾人之力對＃MeToo做出回應，並在這個過程中慢慢拾起一些事物......\n讓更多有類似經驗的人透過感受宇宙，說出自己的故事，讓宇宙聆聽你的的生命經驗，即使是一兩句話也是一個出口。\n願透過此計劃認真地愛人，不論是陌生的他，還是你從未想過的自己。",
+            "「我心有所愛，不忍讓世界傾敗」——羅智成〈一九七九〉\n希望能留住這波好不容易蓄積起的能量不讓他這麼快消散，集結眾人之力對＃MeToo做出回應，並在這個過程中慢慢拾起一些事物......\n讓更多有類似經驗的人透過感受宇宙，說出自己的故事，讓宇宙聆聽你的的生命經驗，即使是一兩句話也是一個出口。\n願透過此計劃認真地愛人，不論是陌生的他，還是你從未想過的自己。",
+            "「我心有所愛，不忍讓世界傾敗」——羅智成〈一九七九〉\n希望能留住這波好不容易蓄積起的能量不讓他這麼快消散，集結眾人之力對＃MeToo做出回應，並在這個過程中慢慢拾起一些事物......\n讓更多有類似經驗的人透過感受宇宙，說出自己的故事，讓宇宙聆聽你的的生命經驗，即使是一兩句話也是一個出口。\n願透過此計劃認真地愛人，不論是陌生的他，還是你從未想過的自己。",
+            "「我心有所愛，不忍讓世界傾敗」——羅智成〈一九七九〉\n希望能留住這波好不容易蓄積起的能量不讓他這麼快消散，集結眾人之力對＃MeToo做出回應，並在這個過程中慢慢拾起一些事物......\n讓更多有類似經驗的人透過感受宇宙，說出自己的故事，讓宇宙聆聽你的的生命經驗，即使是一兩句話也是一個出口。\n願透過此計劃認真地愛人，不論是陌生的他，還是你從未想過的自己。",
+            "「意識很幸福，但那只是慾望的副作用。」\n世界快速發展的背後乘載的是人類強大的慾望，而這是人類致命的通病，明知這樣的結果將會反噬自己，但活在當下卻變成駁斥的理由，多諷刺啊。\n歡迎光臨「藥創科技」，如果說誰沒有過一死了之的念頭，渴望死亡也算是一種慾望，我們致力於用更理性的方式消除這種具感染力的負面慾望，讓活下去的渴望取而代之。\n「淹沒生存意志感到窒息的最後一道浪，其實只是噎在喉頭未嚥下的口水。」",
+            "「意識很幸福，但那只是慾望的副作用。」\n世界快速發展的背後乘載的是人類強大的慾望，而這是人類致命的通病，明知這樣的結果將會反噬自己，但活在當下卻變成駁斥的理由，多諷刺啊。\n歡迎光臨「藥創科技」，如果說誰沒有過一死了之的念頭，渴望死亡也算是一種慾望，我們致力於用更理性的方式消除這種具感染力的負面慾望，讓活下去的渴望取而代之。\n「淹沒生存意志感到窒息的最後一道浪，其實只是噎在喉頭未嚥下的口水。」",
+            "「意識很幸福，但那只是慾望的副作用。」\n世界快速發展的背後乘載的是人類強大的慾望，而這是人類致命的通病，明知這樣的結果將會反噬自己，但活在當下卻變成駁斥的理由，多諷刺啊。\n歡迎光臨「藥創科技」，如果說誰沒有過一死了之的念頭，渴望死亡也算是一種慾望，我們致力於用更理性的方式消除這種具感染力的負面慾望，讓活下去的渴望取而代之。\n「淹沒生存意志感到窒息的最後一道浪，其實只是噎在喉頭未嚥下的口水。」",
+            "西元2099年，Windows系統時間的終點，地球已不再適合人類居住。為了生存，人類啟動了Planet B計畫，將文明遷移到擴散模型中的潛空間與像素空間。機器從環境汲取電能進行運算，與人類共同生成出的一個不斷幻化的人機共生世界。",
+            "西元2099年，Windows系統時間的終點，地球已不再適合人類居住。為了生存，人類啟動了Planet B計畫，將文明遷移到擴散模型中的潛空間與像素空間。機器從環境汲取電能進行運算，與人類共同生成出的一個不斷幻化的人機共生世界。",
+            "儘管當今社會對家庭的樣貌已經有更多元的認識，我們還是可能在不知不覺中陷入對理想家庭關係的預設之中，然而家庭關係本來就沒有標準答案。本作品將工廠中對產品品質控管的邏輯套用在動態的家庭關係上，模擬我們腦中以「家庭的美好想像」審視自己家庭的過程，傳達出「沒有完美的家庭、家庭也沒有一定要怎樣」，對於家庭關係中的各種「應該如何」也不用過分介懷。",
+            "儘管當今社會對家庭的樣貌已經有更多元的認識，我們還是可能在不知不覺中陷入對理想家庭關係的預設之中，然而家庭關係本來就沒有標準答案。本作品將工廠中對產品品質控管的邏輯套用在動態的家庭關係上，模擬我們腦中以「家庭的美好想像」審視自己家庭的過程，傳達出「沒有完美的家庭、家庭也沒有一定要怎樣」，對於家庭關係中的各種「應該如何」也不用過分介懷。",
+            "儘管當今社會對家庭的樣貌已經有更多元的認識，我們還是可能在不知不覺中陷入對理想家庭關係的預設之中，然而家庭關係本來就沒有標準答案。本作品將工廠中對產品品質控管的邏輯套用在動態的家庭關係上，模擬我們腦中以「家庭的美好想像」審視自己家庭的過程，傳達出「沒有完美的家庭、家庭也沒有一定要怎樣」，對於家庭關係中的各種「應該如何」也不用過分介懷。",
+            "儘管當今社會對家庭的樣貌已經有更多元的認識，我們還是可能在不知不覺中陷入對理想家庭關係的預設之中，然而家庭關係本來就沒有標準答案。本作品將工廠中對產品品質控管的邏輯套用在動態的家庭關係上，模擬我們腦中以「家庭的美好想像」審視自己家庭的過程，傳達出「沒有完美的家庭、家庭也沒有一定要怎樣」，對於家庭關係中的各種「應該如何」也不用過分介懷。",
+            "儘管當今社會對家庭的樣貌已經有更多元的認識，我們還是可能在不知不覺中陷入對理想家庭關係的預設之中，然而家庭關係本來就沒有標準答案。本作品將工廠中對產品品質控管的邏輯套用在動態的家庭關係上，模擬我們腦中以「家庭的美好想像」審視自己家庭的過程，傳達出「沒有完美的家庭、家庭也沒有一定要怎樣」，對於家庭關係中的各種「應該如何」也不用過分介懷。",
+            "本計畫是以探討資訊隱私與AI發展問題的ARG（另類實境遊戲）。我們與四位真實台灣Vtuber合作，創造了「一個新成立Vtuber經紀公司」的活動，讓玩家窺探公司內部的資訊危機及內部陰謀。\n平台如何掌握使用者資訊，使用者是否能掌控自己的個資流向？而資訊在AI的演進中至關重要，因此我們深入想像：以科技理性建構的AI，會不會發展出感性基質？以此主題在網路平台上創作的虛擬故事。\n一切都從一封神秘的郵件開始……",
+            "本計畫是以探討資訊隱私與AI發展問題的ARG（另類實境遊戲）。我們與四位真實台灣Vtuber合作，創造了「一個新成立Vtuber經紀公司」的活動，讓玩家窺探公司內部的資訊危機及內部陰謀。\n平台如何掌握使用者資訊，使用者是否能掌控自己的個資流向？而資訊在AI的演進中至關重要，因此我們深入想像：以科技理性建構的AI，會不會發展出感性基質？以此主題在網路平台上創作的虛擬故事。\n一切都從一封神秘的郵件開始……",
+            "身而為人是什麼樣的感受，如何去存在？去活著？作品故事發生在藝術家喬治的追思會上，由象徵著他不同情緒的小動物互相討論，並讓觀眾參與其中；拾起喬治的遺物來觸發相對應的劇情，而四項物件也各自代表了喬治生前的喜、怒、哀、懼四種情緒經驗。只要觀眾持續探索，相信能從違反常理的敘事、摸不著頭緒的話題之中，在故事與故事間，感受到藝術家喬治曾經存在的痕跡。",
+            "身而為人是什麼樣的感受，如何去存在？去活著？作品故事發生在藝術家喬治的追思會上，由象徵著他不同情緒的小動物互相討論，並讓觀眾參與其中；拾起喬治的遺物來觸發相對應的劇情，而四項物件也各自代表了喬治生前的喜、怒、哀、懼四種情緒經驗。只要觀眾持續探索，相信能從違反常理的敘事、摸不著頭緒的話題之中，在故事與故事間，感受到藝術家喬治曾經存在的痕跡。",
+            "當人們與世界進行互動已經不僅限於肉身，我們透過影子作為在不同時空世界的「數位分身」，擷取高度同步的特質在其中沈浸。像是柏拉圖的洞穴預言一樣，來自未來的光線滲透到洞口內，平行的白光折射出各種色彩，周圍色彩斑斕的光線，才讓我們意識到此刻所生活的世界只不過是一個由這些彩色所組成的洞穴，開始對未來的世界不斷猜想、臆測。人類的參與會推動當下更接近洞口，迎接被期待的未知。",
+            "當人們與世界進行互動已經不僅限於肉身，我們透過影子作為在不同時空世界的「數位分身」，擷取高度同步的特質在其中沈浸。像是柏拉圖的洞穴預言一樣，來自未來的光線滲透到洞口內，平行的白光折射出各種色彩，周圍色彩斑斕的光線，才讓我們意識到此刻所生活的世界只不過是一個由這些彩色所組成的洞穴，開始對未來的世界不斷猜想、臆測。人類的參與會推動當下更接近洞口，迎接被期待的未知。",
+            "因資訊的龐雜且極具吸引力，大部分人自早晨起即被手機奪取注意力，在日常中的各種間隙也會忍不住拿起手機，導致個體逐漸陷入吸收過量資訊的惡性循環中。\n在作品中，主角因資訊量超載而被困入蛋中世界，整個蛋中的電子世界呈現一個資訊爆炸的狀態，資訊之於我們的極大吸引力我們以「蛋殼」作為象徵，而電子寵物其實即是人類自身，被困在網路世界裡難以自拔的人們，彷彿就像似生活在蛋中世界對各類繁雜資訊予取予求的寵物。",
+            "因資訊的龐雜且極具吸引力，大部分人自早晨起即被手機奪取注意力，在日常中的各種間隙也會忍不住拿起手機，導致個體逐漸陷入吸收過量資訊的惡性循環中。\n在作品中，主角因資訊量超載而被困入蛋中世界，整個蛋中的電子世界呈現一個資訊爆炸的狀態，資訊之於我們的極大吸引力我們以「蛋殼」作為象徵，而電子寵物其實即是人類自身，被困在網路世界裡難以自拔的人們，彷彿就像似生活在蛋中世界對各類繁雜資訊予取予求的寵物。",
+            "探討生死含意和文字符碼之間的關聯，從結繩記事起，人們藉由身外之物來記憶，不再全然依靠大腦。文字發明後更讓思想得以流傳，那些過往留下來的痕跡被一代又一代的傳頌。思緒以文字方式逸散，就算肉體已死，靈魂卻得以永生。",
+            "探討生死含意和文字符碼之間的關聯，從結繩記事起，人們藉由身外之物來記憶，不再全然依靠大腦。文字發明後更讓思想得以流傳，那些過往留下來的痕跡被一代又一代的傳頌。思緒以文字方式逸散，就算肉體已死，靈魂卻得以永生。",
+            "世界的喧囂不斷推動我們前行，腦海中流動著過多的資訊。即便是簡單的行走，思緒也未曾停歇。這樣的浪潮似乎已久未平息，連自身聲音也被淹沒其中。\n本作結合VR媒介與「聲音漫步」概念，邀請觀眾體驗從城市喧囂至自然風聲的轉變。透過簡化的動作和視覺，以及聲音降噪技術，強調那些常被忽視的細微聲響。此作品讓觀眾重新聚焦於聽覺，逐步引導他們沉浸在當下，緩慢並深切地感受每一刻。並期望觀眾能透過這樣的體驗，重新感受周遭的環境，找回自己在這喧囂世界中的聲音與節奏。\n就在此刻，跟自己一起，慢下來。",
+            "世界的喧囂不斷推動我們前行，腦海中流動著過多的資訊。即便是簡單的行走，思緒也未曾停歇。這樣的浪潮似乎已久未平息，連自身聲音也被淹沒其中。\n本作結合VR媒介與「聲音漫步」概念，邀請觀眾體驗從城市喧囂至自然風聲的轉變。透過簡化的動作和視覺，以及聲音降噪技術，強調那些常被忽視的細微聲響。此作品讓觀眾重新聚焦於聽覺，逐步引導他們沉浸在當下，緩慢並深切地感受每一刻。並期望觀眾能透過這樣的體驗，重新感受周遭的環境，找回自己在這喧囂世界中的聲音與節奏。\n就在此刻，跟自己一起，慢下來。",
+            "世界的喧囂不斷推動我們前行，腦海中流動著過多的資訊。即便是簡單的行走，思緒也未曾停歇。這樣的浪潮似乎已久未平息，連自身聲音也被淹沒其中。\n本作結合VR媒介與「聲音漫步」概念，邀請觀眾體驗從城市喧囂至自然風聲的轉變。透過簡化的動作和視覺，以及聲音降噪技術，強調那些常被忽視的細微聲響。此作品讓觀眾重新聚焦於聽覺，逐步引導他們沉浸在當下，緩慢並深切地感受每一刻。並期望觀眾能透過這樣的體驗，重新感受周遭的環境，找回自己在這喧囂世界中的聲音與節奏。\n就在此刻，跟自己一起，慢下來。",
+            "世界的喧囂不斷推動我們前行，腦海中流動著過多的資訊。即便是簡單的行走，思緒也未曾停歇。這樣的浪潮似乎已久未平息，連自身聲音也被淹沒其中。\n本作結合VR媒介與「聲音漫步」概念，邀請觀眾體驗從城市喧囂至自然風聲的轉變。透過簡化的動作和視覺，以及聲音降噪技術，強調那些常被忽視的細微聲響。此作品讓觀眾重新聚焦於聽覺，逐步引導他們沉浸在當下，緩慢並深切地感受每一刻。並期望觀眾能透過這樣的體驗，重新感受周遭的環境，找回自己在這喧囂世界中的聲音與節奏。\n就在此刻，跟自己一起，慢下來。",
+        ];
+
+        
+
+        
+        function toggleMenu() {
+            document.getElementById('menu').classList.toggle('open');
+        }
+
+        function toggleInfoCard() {
+            var infoCard = document.getElementById('info-card');
+            var toggleButton = document.getElementById('toggle-info-card');
+
+            if (infoCard.style.right === '0px') {
+                infoCard.style.right = '-330px'; // 隐藏卡片
+                toggleButton.style.transform = 'rotate(0deg)';
+            } else {
+                infoCard.style.right = '0px'; // 显示卡片
+                toggleButton.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        function showTip() {
+            document.getElementById('floating-tip').style.display = 'block';
+        }
+
+        function closeTip() {
+            document.getElementById('floating-tip').style.display = 'none';
+        }
+        
+        function toggleDropdown(dropdownId) {
+            var dropdownContent = document.getElementById(dropdownId);
+            dropdownContent.style.display = dropdownContent.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function showContent(imageId) {
+            var sky = document.getElementById('image-360');
+            sky.emit('fade');
+            setTimeout(() => {
+                sky.setAttribute('src', '#' + imageId);
+                sky.emit('fadeback');
+            }, 500);
+
+            // 顯示作品名
+            var title = document.getElementById('title');
+            var imageIndex = parseInt(imageId.replace('img', ''), 10) - 1;
+            title.textContent = imageNames[imageIndex];
+            title.style.opacity = 1;
+            setTimeout(() => {
+                title.style.opacity = 0;
+            }, 6000); // 顯示5秒後開始淡出
+
+            // 顯示浮動卡片
+            var infoCard = document.getElementById('info-card');
+            var infoTitle = document.getElementById('info-title');
+            var infoAuthor = document.getElementById('info-author');
+            var infoDescription = document.getElementById('info-description');
+            var infoImage = document.getElementById('info-image');
+            var infoImage2 = document.getElementById('info-image2');
+            infoTitle.textContent = imageNames[imageIndex];
+            infoAuthor.textContent = imageAuthors[imageIndex];
+            infoDescription.textContent = imageDescriptions[imageIndex];
+            infoImage.setAttribute('src', 'WorkImage/' + (imageIndex + 1) + '.jpg');
+            infoImage2.setAttribute('src', 'WorkImage2/' + (imageIndex + 1) + '.jpg');
+            infoCard.style.display = 'block';
+        }
+
+        function createImageElements() {
+            var assets = document.getElementById('assets');
+            var links = document.getElementById('links');
+            var dropdownContent1 = document.getElementById('dropdown-content-1');
+            var dropdownContent2 = document.getElementById('dropdown-content-2');
+
+            const nameCounts = {};
+
+            for (var i = 1; i <= 48; i++) { // 從第1張圖片到第48張圖片
+                // Create img element
+                var img = document.createElement('img');
+                img.setAttribute('id', 'img' + i);
+                img.setAttribute('crossorigin', 'anonymous');
+                img.setAttribute('src', '360images/' + i + '.jpg');
+                assets.appendChild(img);
+
+                // Create link entity
+                var link = document.createElement('a-entity');
+                link.setAttribute('template', 'src: #link');
+                link.setAttribute('data-src', '#img' + i);
+                link.setAttribute('data-thumb', '#img' + i);
+                links.appendChild(link);
+
+                // Handle duplicate names
+                let displayName = imageNames[i - 1];
+                if (nameCounts[displayName]) {
+                    nameCounts[displayName]++;
+                    displayName += ` ${nameCounts[displayName]}`;
+                } else {
+                    nameCounts[displayName] = 1;
+                }
+
+                // Create menu item
+                var menuItem = document.createElement('li');
+                var menuLink = document.createElement('a');
+                menuLink.setAttribute('onclick', `showContent('img${i}')`);
+                menuLink.textContent = displayName;
+                menuItem.appendChild(menuLink);
+
+                if (i <= 27) {
+                    dropdownContent1.appendChild(menuItem);
+                } else {
+                    dropdownContent2.appendChild(menuItem);
+                }
+            }
+        }
+
+        function showPrevious() {
+            var currentSrc = document.getElementById('image-360').getAttribute('src');
+            var currentIndex = parseInt(currentSrc.replace('#img', ''), 10);
+            var prevIndex = currentIndex > 1 ? currentIndex - 1 : 48;
+            showContent('img' + prevIndex);
+        }
+
+        function showNext() {
+            var currentSrc = document.getElementById('image-360').getAttribute('src');
+            var currentIndex = parseInt(currentSrc.replace('#img', ''), 10);
+            var nextIndex = currentIndex < 48 ? currentIndex + 1 : 1;
+            showContent('img' + nextIndex);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            createImageElements();
+
+            // 在頁面加載時設置初始顯示的圖片
+            showContent('img1');
+
+            // 顯示提示窗
+            showTip();
+
+            // 添加鍵盤事件監聽器
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'm') {
+                    toggleMenu();
+                } else if (event.key === 'ArrowLeft') {
+                    showPrevious();
+                } else if (event.key === 'ArrowRight') {
+                    showNext();
+                } else if (event.key === 'i') {
+                    toggleInfoCard();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
